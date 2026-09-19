@@ -10,65 +10,10 @@ processes, sharing `state.db`:
   dates, so you don't hand-edit config or restart the poller to change what
   it's looking for.
 
-`parking_bot/client.py` is wired up against a real captured HAR (ta-cloud /
-`ld.tableair.com`, Angular front-end). See **API notes** below for what's
-directly confirmed vs. inferred.
-
-## API notes (from the captured HAR)
-
-Confirmed directly from traffic:
-- Auth: `POST /api/auth/` with `{"type":1,"email","password"}`. No token is
-  returned in the JSON body — session + CSRF are handled entirely via
-  cookies the server sets on the response (Chrome's HAR export redacts
-  `Set-Cookie`/`Cookie` values, so the exact cookie names aren't visible,
-  but httpx's client-level cookie jar handles this transparently).
-- State-changing `POST /api/booking/` requires an `X-CSRFToken` header
-  matching a `*csrf*`-named cookie. The `GET .../cancel/` call does **not**
-  send that header — consistent with Django only enforcing CSRF on unsafe
-  methods.
-- Parking spots are `bookable_type=3` inside a venue (`GET
-  /api/team/{team_id}/bookables/?...&venue={venue_id}`). Each has a numeric
-  `id` and a `prefab` code (e.g. `"PS0000045"`); **`reserve()` needs the
-  `prefab` code**, not the numeric id.
-- A full-day booking is a fixed local business-hour window — the sample
-  reservation was `04:00Z`–`15:00Z` = `07:00`–`18:00` Europe/Vilnius.
-- Existing bookings across a whole venue in one request:
-  `GET /api/teams/{team_id}/bookings/?venue=<id>&from_date=...&to_date=...&status=1`.
-  `status:1` = active, `status:2` = cancelled. This is how `get_availability()`
-  finds every occupied spot in a single call.
-  **Gotcha:** repeating `bookable=<id>` once per spot to filter by many ids
-  in one request does **not** work — Django's filter backend only keeps the
-  *last* repeated value, so it silently matches almost nothing. `venue`
-  works correctly instead and is what `client.py` uses.
-
-Inferred, not directly observed:
-- A double-booking conflict is treated as any `400`/`409` response from
-  `POST /api/booking/`. The reference HAR only captured a successful (`201`)
-  reservation, never a conflict, so the real error shape is unconfirmed.
-  If a real conflict happens during testing, check the logged response body
-  and tighten `ReservationConflict` handling in `client.py` if needed.
-- The `booking_status_time` field on the bookables endpoint looked like it
-  might report future-date availability directly, but in the capture it
-  always reflected "right now" regardless of the date requested — so
-  `get_availability()` deliberately does *not* use it, and cross-checks
-  bookings by date range instead.
-
-## Capturing more real traffic (only needed if something above turns out wrong)
-
-1. Open TableAir in your browser, open DevTools → **Network** tab, filter to
-   **Fetch/XHR**, and check **Preserve log**.
-2. Log out and back in (captures the login request), then open the
-   availability/calendar view for a date. If possible, make a test
-   reservation and then cancel it, so the reserve and cancel calls both get
-   captured too.
-3. Right-click the request list → **Save all as HAR with content**.
-4. **Before sharing the HAR file**, redact your password from the login
-   request body (find/replace it with a placeholder) — HAR files store
-   full request bodies and session cookies in plaintext. Treat the file as
-   a secret.
-5. Alternative: right-click each key request individually (login,
-   availability check, reserve, cancel) → **Copy** → **Copy as cURL**, and
-   share those instead of a full HAR.
+`parking_bot/client.py` talks to TableAir's undocumented internal API
+(reverse-engineered from real traffic). If TableAir changes that API and
+something breaks, the notable gotchas and assumptions are documented as
+comments right next to the code they affect in `client.py`.
 
 ## Setup
 
