@@ -1,0 +1,8 @@
+config.yaml
+parking-bot.env
+state.db
+*.har
+__pycache__/
+*.pyc
+.venv/
+*.log

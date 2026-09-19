@@ -1,0 +1,16 @@
+[Unit]
+Description=parking-bot TableAir reservation poller
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/parking-bot
+EnvironmentFile=/home/pi/parking-bot/parking-bot.env
+ExecStart=/home/pi/parking-bot/.venv/bin/python -m parking_bot.runner $RUNNER_ARGS
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

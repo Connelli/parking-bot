@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>parking-bot</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 60rem; margin: 2rem auto; padding: 0 1rem; color: #1a1a1a; }
+  h1 { font-size: 1.4rem; }
+  h2 { font-size: 1.1rem; margin-top: 2.5rem; }
+  table { border-collapse: collapse; width: 100%; margin-top: 0.5rem; }
+  th, td { text-align: left; padding: 0.4rem 0.6rem; border-bottom: 1px solid #ddd; font-size: 0.9rem; }
+  form.inline { display: inline; }
+  .spot-group { display: none; margin-top: 0.5rem; max-height: 12rem; overflow-y: auto; border: 1px solid #ddd; padding: 0.5rem; }
+  .spot-group label { display: block; font-size: 0.85rem; font-weight: normal; }
+  fieldset { border: 1px solid #ddd; padding: 1rem; }
+  label { display: block; margin-top: 0.75rem; font-weight: 600; }
+  input[type=date], select { padding: 0.3rem; }
+  button { margin-top: 1rem; padding: 0.4rem 1rem; }
+  .status-active { color: #a35b00; }
+  .status-reserved { color: #167c3d; }
+</style>
+</head>
+<body>
+<h1>parking-bot</h1>
+
+<h2>Watched dates</h2>
+<table>
+  <tr><th>Date</th><th>Venue</th><th>Preferred spots</th><th>Status</th><th></th></tr>
+  {% for w in watches %}
+  <tr>
+    <td>{{ w.date }}</td>
+    <td>{{ w.location_id }}</td>
+    <td>{{ w.preferred_spot_ids | join(", ") if w.preferred_spot_ids else "any" }}</td>
+    <td>
+      {% if w.fulfilled %}
+        <span class="status-reserved">reserved ({{ w.reservation_id }})</span>
+      {% else %}
+        <span class="status-active">watching</span>
+      {% endif %}
+    </td>
+    <td>
+      <form class="inline" method="post" action="{{ url_for('delete_watch', date=w.date) }}">
+        <button type="submit">Remove</button>
+      </form>
+    </td>
+  </tr>
+  {% else %}
+  <tr><td colspan="5">Nothing watched yet.</td></tr>
+  {% endfor %}
+</table>
+
+<h2>Add a date to watch</h2>
+<form method="post" action="{{ url_for('add_watch') }}">
+  <fieldset>
+    <label for="date">Date</label>
+    <input type="date" id="date" name="date" required>
+
+    <label for="location_id">Venue</label>
+    <select id="location_id" name="location_id" onchange="showSpots(this.value)">
+      {% for venue in venues %}
+      <option value="{{ venue.id }}">{{ venue.name }} ({{ venue.spots | length }} spots)</option>
+      {% endfor %}
+    </select>
+
+    <label>Preferred spots (none checked = accept any free spot)</label>
+    {% for venue in venues %}
+    <div class="spot-group" id="spots-{{ venue.id }}">
+      {% for spot in venue.spots %}
+      <label><input type="checkbox" name="preferred_spot_ids" value="{{ spot.prefab }}"> {{ spot.name }} ({{ spot.prefab }})</label>
+      {% endfor %}
+    </div>
+    {% endfor %}
+
+    <button type="submit">Watch this date</button>
+  </fieldset>
+</form>
+
+<h2>Recent activity</h2>
+<table>
+  <tr><th>Time (UTC)</th><th>Date</th><th>Spot</th><th>Result</th><th>Message</th></tr>
+  {% for ts, date, spot_id, result, message in attempts %}
+  <tr><td>{{ ts }}</td><td>{{ date }}</td><td>{{ spot_id or "" }}</td><td>{{ result }}</td><td>{{ message or "" }}</td></tr>
+  {% else %}
+  <tr><td colspan="5">No activity yet.</td></tr>
+  {% endfor %}
+</table>
+
+<script>
+  function showSpots(venueId) {
+    document.querySelectorAll(".spot-group").forEach(function (el) {
+      el.style.display = el.id === "spots-" + venueId ? "block" : "none";
+    });
+  }
+  showSpots(document.getElementById("location_id").value);
+</script>
+</body>
+</html>

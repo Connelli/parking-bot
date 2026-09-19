@@ -1,0 +1,22 @@
+# Copy this to config.yaml and fill in real values. config.yaml is gitignored.
+
+tableair:
+  base_url: "https://ld.tableair.com"   # your company's tableair subdomain
+  username: "you@company.com"
+  password: "your-password"
+
+telegram:
+  bot_token: "123456:ABC-DEF..."   # from @BotFather
+  chat_id: "123456789"             # your numeric chat id (message @userinfobot to get it)
+
+poll_interval_seconds: 60
+jitter_seconds: 5
+
+# Local timezone + business-day window used to compute each booking's
+# start/end (observed as a fixed 07:00-18:00 local full-day slot).
+timezone: "Europe/Vilnius"
+work_start: "07:00"
+work_end: "18:00"
+
+# Which dates to watch is managed through the web GUI (python -m parking_bot.webapp),
+# not here -- it's stored in state.db.

@@ -1,0 +1,15 @@
+[Unit]
+Description=parking-bot web GUI
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/parking-bot
+ExecStart=/home/pi/parking-bot/.venv/bin/python -m parking_bot.webapp
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
